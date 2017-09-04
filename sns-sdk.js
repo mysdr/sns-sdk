@@ -4,6 +4,18 @@
 	(global.sns = factory());
 }(this, (function () { 'use strict';
 
+/**
+ * @param { String | * } 需要被 JSON.parse() 的字符串
+ * @return { Object } 被正确解析后的对象，反之返回一个空对象
+ */
+var Parse = function(text) {
+  try {
+    return JSON.parse(text) || {}
+  } catch (error) {
+    return {}
+  }
+};
+
 var CookieConfig = {
   /**
    * @param info { String } 设置的 cookie 值
@@ -27,6 +39,10 @@ var CookieConfig = {
     });
   },
 
+  get: function get() {
+    return Parse(decodeURIComponent(document.cookie.match(/snsInfo=([^;]*)|$/)[1]))
+  },
+
   remove: function remove() {
     // 清除旧的 cookie
     document.cookie = 'snsInfo=; Domain=h5.ele.me; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -36,18 +52,6 @@ var CookieConfig = {
       expired: 'Thu, 01 Jan 1970 00:00:00 GMT',
     });
   },
-};
-
-/**
- * @param { String | * } 需要被 JSON.parse() 的字符串
- * @return { Object } 被正确解析后的对象，反之返回一个空对象
- */
-var Parse = function(text) {
-  try {
-    return JSON.parse(text) || {}
-  } catch (error) {
-    return {}
-  }
 };
 
 /**
@@ -77,6 +81,20 @@ var snsSdk = {
   debug: /(\?|#|&)debug/.test(location.href),
   code: (location.href.match(/[\?|#|&]code=([^&]+)/) || [])[1],
   queue: [],
+  wxAppid: 'wx2a416286e96100ed', // 微信的 appid
+  qqAppid: '101204453', // QQ 的 client id
+  wbAppid: '1772937595', // 微博的 client id
+  snsInfo: CookieConfig.get(),
+
+  config: function config(ref) {
+    var wxAppid = ref.wxAppid;
+    var qqAppid = ref.qqAppid;
+    var wbAppid = ref.wbAppid;
+
+    if (wxAppid) { this.wxAppid = wxAppid; }
+    if (qqAppid) { this.qqAppid = qqAppid; }
+    if (wbAppid) { this.wbAppid = wbAppid; }
+  },
 
   /**
    * @return { Boolean } sns-sdk 是否可用（使用场景是在第三方客户端中）
@@ -92,24 +110,20 @@ var snsSdk = {
   /**
    * @param object { Object } 从第三方授权后拿到的信息
    */
-  done: function done(object) {
+  done: function done() {
     var this$1 = this;
 
-    // 兼容各方外露字段不统一
-    object.name = object.name || object.nickname;
-    object.openid = object.openid || object.id;
-    object.avatar = object.figureurl_qq_1 || object.headimgurl || object.profile_image_url;
-    object.eleme_key = object.eleme_key || object.key;
-
-    if (!object.openid || !object.eleme_key) {
+    var ref = this;
+    var snsInfo = ref.snsInfo;
+    if (!snsInfo.openid) {
       return this.authorize()
     }
 
-    CookieConfig.add(object);
+    CookieConfig.add(snsInfo);
     this.queue.reverse();
 
     while (this.queue.length) {
-      this$1.queue.pop()(object);
+      this$1.queue.pop()(snsInfo);
     }
   },
 
@@ -123,9 +137,9 @@ var snsSdk = {
       ? encodeURIComponent(location.href)
       : encodeURIComponent('https://h5.ele.me/wechat/#eleme_redirect=' + encodeURIComponent(location.href));
     var authorizeMap = {
-      weixin: 'https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx2a416286e96100ed&redirect_uri=' + url + '&response_type=code&scope=snsapi_userinfo',
-      qq: 'https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id=101204453&redirect_uri=' + url + '&response_type=code&scope=get_user_info',
-      weibo: 'https://api.weibo.com/oauth2/authorize?client_id=1772937595&redirect_uri=' + url + '&display=mobile',
+      weixin: ("https://open.weixin.qq.com/connect/oauth2/authorize?appid=" + (this.wxAppid) + "&redirect_uri=" + url + "&response_type=code&scope=snsapi_userinfo"),
+      qq: ("https://graph.qq.com/oauth2.0/authorize?response_type=code&client_id=" + (this.qqAppid) + "&redirect_uri=" + url + "&response_type=code&scope=get_user_info"),
+      weibo: ("https://api.weibo.com/oauth2/authorize?client_id=" + (this.wbAppid) + "&redirect_uri=" + url + "&display=mobile"),
     };
     location.href = authorizeMap[this.env];
   },
@@ -145,19 +159,22 @@ var snsSdk = {
       return
     }
 
-    if (this.code) {
-      // Remove code in url params
-      var copy = location.href.replace(/(&|\?|#)code=\w+/g, '$1code=');
-      history.replaceState(null, null, copy);
+    if (this.snsInfo.openid) {
+      this.done();
+    } else {
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', ("//waltz.ele.me/" + (this.env) + "/userinfo?code=" + (encodeURIComponent(this.code))));
+      xhr.open('GET', ("//waltz.ele.me/" + (this.env) + "/userinfo/" + (this.wxAppid) + "?code=" + (encodeURIComponent(this.code))));
       xhr.onerror = xhr.onload = function () {
-        this$1.done(Parse(xhr.responseText));
+        // 兼容各方外露字段不统一
+        var object = Parse(xhr.responseText);
+        object.name = object.name || object.nickname;
+        object.openid = object.openid || object.id;
+        object.avatar = object.figureurl_qq_1 || object.headimgurl || object.profile_image_url;
+        object.eleme_key = object.eleme_key || object.key;
+        this$1.snsInfo = object;
+        this$1.done();
       };
       xhr.send();
-      delete this.code;
-    } else {
-      this.done(Parse(decodeURIComponent(document.cookie.match(/snsInfo=([^;]*)|$/)[1])));
     }
   },
 
@@ -185,7 +202,7 @@ var snsSdk = {
       'onMenuShareQQ',
       'onMenuShareWeibo' ];
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', ("//waltz.ele.me/weixin/jssign?url=" + (encodeURIComponent(location.href))));
+    xhr.open('GET', ("//waltz.ele.me/weixin/jssign/" + (this.wxAppid) + "?url=" + (encodeURIComponent(location.href))));
     xhr.onload = function () {
       var data = Parse(xhr.responseText);
       var options = {

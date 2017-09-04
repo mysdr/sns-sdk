@@ -20,6 +20,14 @@ if (/MicroMessenger/i.test(navigator.userAgent))
 </script>
 <!-- 引入 sns-sdk，注意版本 -->
 <script src="//shadow.elemecdn.com/gh/eleme/sns-sdk@{x.y.z}/sns-sdk.min.js"></script>
+
+<!-- 可以自定义你的 appid 了（1.2.0 以上支持） -->
+<script>
+// import sns
+sns.config({
+  wxAppid: 'your own appid', // 默认使用「elemeorder」这个服务号的 appid
+})
+</script>
 ```
 
 ## 使用
