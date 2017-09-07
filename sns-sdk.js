@@ -76,6 +76,7 @@ var Env = (function() {
   }
 })();
 
+// 取 URL 中最后一个 code 值
 var codes = location.href.match(/[\?|#|&]code=([^&]+)/g);
 var code = '';
 if (Array.isArray(codes)) {
@@ -96,12 +97,8 @@ var snsSdk = {
 
   config: function config(ref) {
     var wxAppid = ref.wxAppid;
-    var qqAppid = ref.qqAppid;
-    var wbAppid = ref.wbAppid;
 
     if (wxAppid) { this.wxAppid = wxAppid; }
-    if (qqAppid) { this.qqAppid = qqAppid; }
-    if (wbAppid) { this.wbAppid = wbAppid; }
   },
 
   /**
@@ -171,7 +168,9 @@ var snsSdk = {
       this.done();
     } else {
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', ("//waltz.ele.me/" + (this.env) + "/userinfo/" + (this.wxAppid) + "?code=" + (encodeURIComponent(this.code))));
+      // 只有微信支持自定义 appid
+      var appid = this.env === 'weixin' ? this.wxAppid : '';
+      xhr.open('GET', ("//waltz.ele.me/" + (this.env) + "/userinfo/" + appid + "?code=" + (encodeURIComponent(this.code))));
       xhr.onerror = xhr.onload = function () {
         // 兼容各方外露字段不统一
         var object = Parse(xhr.responseText);

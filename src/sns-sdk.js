@@ -13,10 +13,8 @@ export default {
   wbAppid: '1772937595', // 微博的 client id
   snsInfo: CookieConfig.get(),
 
-  config({ wxAppid, qqAppid, wbAppid }) {
+  config({ wxAppid }) {
     if (wxAppid) this.wxAppid = wxAppid
-    if (qqAppid) this.qqAppid = qqAppid
-    if (wbAppid) this.wbAppid = wbAppid
   },
 
   /**
@@ -81,7 +79,9 @@ export default {
       this.done()
     } else {
       var xhr = new XMLHttpRequest()
-      xhr.open('GET', `//waltz.ele.me/${this.env}/userinfo/${this.wxAppid}?code=${encodeURIComponent(this.code)}`)
+      // 只有微信支持自定义 appid
+      let appid = this.env === 'weixin' ? this.wxAppid : ''
+      xhr.open('GET', `//waltz.ele.me/${this.env}/userinfo/${appid}?code=${encodeURIComponent(this.code)}`)
       xhr.onerror = xhr.onload = () => {
         // 兼容各方外露字段不统一
         let object = Parse(xhr.responseText)
