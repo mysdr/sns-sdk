@@ -76,10 +76,18 @@ var Env = (function() {
   }
 })();
 
+var codes = location.href.match(/[\?|#|&]code=([^&]+)/g);
+var code = '';
+if (Array.isArray(codes)) {
+  code = codes.pop().match(/code=(\w+)/)[1];
+}
+
+var Code = code;
+
 var snsSdk = {
   env: Env,
   debug: /(\?|#|&)debug/.test(location.href),
-  code: (location.href.match(/[\?|#|&]code=([^&]+)/) || [])[1],
+  code: Code,
   queue: [],
   wxAppid: 'wx2a416286e96100ed', // 微信的 appid
   qqAppid: '101204453', // QQ 的 client id

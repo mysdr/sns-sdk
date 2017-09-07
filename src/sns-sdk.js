@@ -1,11 +1,12 @@
 import CookieConfig from './cookie-config'
 import Parse from './parse'
 import Env from './env'
+import Code from './get-code.js'
 
 export default {
   env: Env,
   debug: /(\?|#|&)debug/.test(location.href),
-  code: (location.href.match(/[\?|#|&]code=([^&]+)/) || [])[1],
+  code: Code,
   queue: [],
   wxAppid: 'wx2a416286e96100ed', // 微信的 appid
   qqAppid: '101204453', // QQ 的 client id
